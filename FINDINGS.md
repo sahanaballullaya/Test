@@ -2,7 +2,7 @@
 
 **Analysis Period:** Feb 9-15, 2026  
 **Prepared for:** On-Call Engineering Lead  
-**Dashboard:** See `ops\_dashboard.py` for detailed visualizations
+**Dashboard:** See `ops_dashboard.py` for detailed visualizations
 
 \---
 
@@ -95,7 +95,7 @@ CUS-105 also shows elevated agent call error rates, suggesting ingestion failure
 
 ```python
 # Method: Customer-level aggregation and comparison
-# 1. Grouped ingestion data by customer\_id
+# 1. Grouped ingestion data by customer_id
 # 2. Calculated failure rate for each customer
 # 3. Identified CUS-105 with 39.8% failure rate vs 17.2% average
 # 4. Filtered CUS-105's failed ingestions to count by validation\_layer\_failed
