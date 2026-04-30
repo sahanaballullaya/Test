@@ -1,258 +1,98 @@
-# Operational Findings \& Recommendations
+# HealthCo Operations Assessment - Key Findings
 
 **Analysis Period:** Feb 9-15, 2026  
-**Prepared for:** On-Call Engineering Lead  
-**Dashboard:** See `ops_dashboard.py` for detailed visualizations
+**Analyst:** Sahana Ballullaya  
+**Date:** April 29, 2026
 
-\---
+---
 
 ## Executive Summary
 
-Analysis of HealthCo's operational data over 7 days reveals three critical issues requiring immediate attention:
+Analysis of 7 days of operational data identified three critical issues requiring immediate attention. Platform API circuit breaker failure caused system-wide impact, one customer has severe ingestion failures, and alert response process is broken.
 
-1. **Platform API degradation** causing 90% increase in downstream agent call failures
-2. **Customer CUS-105 severe ingestion failures** (40% failure rate, 2.3x higher than average)
-3. **10 unresolved CRITICAL alerts** including circuit breaker events and scheduling failure clusters
+---
 
-\---
+## Priority 1: Platform API Circuit Breaker - System-Wide Impact
 
-## Top 3 Operational Issues
+**What happened:** Platform API circuit breaker opened Feb 13 at 14:00 and remained open for 5 hours.
 
-### ISSUE 1: Platform API Circuit Breaker Opened - System-Wide Impact
+**Impact:** Agent call error rate increased 90% (from 14.5% to 27.7%) during circuit breaker period. Total affected calls: 26 errors out of 94 calls.
 
-**What happened:**
+**Root cause:** API error rate exceeded 5% threshold. Error type breakdown during circuit breaker: 77% TOOL_ERROR, 19% TIMEOUT, 4% CALL_FAILED.
 
-* Platform API circuit breaker opened on **Feb 13 at 14:00** (2:00 PM)
-* Circuit breaker remained OPEN for **4 hours 55 minutes** (until 18:55)
-* 53 consecutive 5-minute intervals with circuit breaker OPEN status
-* Error rate threshold breached (>5%)
+**Immediate action:**
+- Platform team investigate: database connection pool, external dependency timeouts, what changed before 14:00 on Feb 13
+- Check API logs for request volume spikes or deployment changes
+- Goal: Prevent recurrence
 
-**Impact:**
+**Priority:** CRITICAL - affects all customers
 
-* **Agent call error rate increased 90.9%** during circuit breaker period
+---
 
-  * Error rate BEFORE circuit breaker: 14.49%
-  * Error rate DURING circuit breaker: 27.66%
-* Affected all customers system-wide (not customer-specific)
-* Elevated latency and timeout rates on agent calls
+## Priority 2: CUS-105 Severe Ingestion Failures
 
-**How I found it:**
+**What happened:** CUS-105 has 39.8% ingestion failure rate vs 17.2% average (2.3x higher).
 
-```python
-# Method: Filter and compare error rates
-# 1. Filtered api_health_metrics for circuit_breaker_status = "OPEN"
-# 2. Found circuit breaker opened Feb 13 at 14:00, closed at 18:55
-# 3. Split agent calls into "before" and "during" circuit breaker period
-# 4. Calculated error rate for each period
-# 5. Found 90.9% increase during circuit breaker period
-```
+**Impact:** CUS-105 also shows elevated agent call error rate, indicating ingestion issues propagate downstream.
 
-**Root cause hypothesis:**
-Platform API reached error rate threshold (>5%) triggering circuit breaker protection. This prevented cascading failures but degraded service for all downstream consumers including Agent Runtime.
+**Root cause:** Validation failures concentrated at SCHEMA layer (7 failures), API_CONTRACT (6 failures), AI_SEMANTIC (6 failures).
 
-**Recommended action:**
+**Immediate action:**
+- Customer Success contact CUS-105 within 4 hours
+- Provide validation error report with specific field failures
+- Check if recent schema version deployment broke their integration
+- If schema changed: rollback or provide migration timeline
 
-1. **IMMEDIATE (Next 1 hour):** Platform team to investigate API logs from Feb 13, 14:00-18:55
+**Priority:** HIGH - customer-specific but high volume impact
 
-   * Check: Database connection pool exhaustion, external dependency timeouts, resource constraints
-   * Review: What changed before 14:00? Deployment? Traffic spike? External service degradation?
-2. **SHORT-TERM (This week):**
+---
 
-   * Implement automated alerting for circuit breaker state changes with PagerDuty integration
-   * Review circuit breaker threshold (is 5% appropriate or should it be higher?)
-   * Add circuit breaker half-open state monitoring to prevent repeated failures
-3. **LONG-TERM:**
+## Priority 3: Alert Response Process Failure
 
-   * Build circuit breaker dashboard showing open/close transitions and correlation with downstream errors
-   * Implement retry logic with exponential backoff in Agent Runtime to handle API degradation gracefully
+**What happened:** 10 unresolved CRITICAL alerts, 2 unacknowledged (ALT-0075, ALT-0097).
 
-**Priority:** CRITICAL - System-wide outage root cause
+**Impact:** CUS-102 appears in 3 critical alerts. Unacknowledged alerts indicate on-call process breakdown.
 
-\---
+**Immediate action:**
+- On-call engineer acknowledge all CRITICAL alerts within 1 hour
+- Assign owners for each alert
+- Establish SLA: CRITICAL alerts acknowledged within 15 minutes
 
-### ISSUE 2: Customer CUS-105 - Severe Ingestion Failures
+**Priority:** MEDIUM - process issue requiring immediate fix
 
-**What happened:**
+---
 
-* CUS-105 has **39.8% ingestion failure rate** (37 failures out of 93 batches)
-* Average failure rate across all customers: 17.2%
-* **CUS-105 is 2.3x worse than average**
+## Cross-System Correlation Analysis
 
-**Failure breakdown by validation layer:**
+**Finding:** Platform API degradation directly causes downstream agent call failures. When circuit breaker opened, tools couldn't reach API, resulting in immediate TOOL_ERROR failures (response time <5 seconds) and some TIMEOUT failures (35-56 seconds).
 
-* SCHEMA validation: 7 failures (19%)
-* API_CONTRACT: 6 failures (16%)
-* AI_SEMANTIC: 6 failures (16%)
-* BUSINESS_RULE: 5 failures (14%)
-* Other layers: 13 failures (35%)
+**Evidence:** Scatter plot shows customers with high ingestion failure rates also have high agent call error rates, confirming ingestion issues propagate downstream.
 
-**Downstream impact:**
-CUS-105 also shows elevated agent call error rates, suggesting ingestion failures propagate downstream:
+---
 
-* When CUS-105 ingestion fails, their provider data is incomplete/invalid → agent calls fail due to missing or incorrect scheduling data
+## Recommendations
 
-**How I found it:**
+**Next 2 hours:**
+1. Platform team: Start circuit breaker root cause investigation
+2. Customer Success: Contact CUS-105 with validation report
+3. On-call: Acknowledge all unresolved CRITICAL alerts
 
-```python
-# Method: Customer-level aggregation and comparison
-# 1. Grouped ingestion data by customer_id
-# 2. Calculated failure rate for each customer
-# 3. Identified CUS-105 with 39.8% failure rate vs 17.2% average
-# 4. Filtered CUS-105's failed ingestions to count by validation_layer_failed
-# 5. Found SCHEMA (7), API_CONTRACT (6), AI_SEMANTIC (6) as top failure layers
-```
+**This week:**
+1. Implement automated alerting for circuit breaker state changes
+2. Build customer-specific ingestion validation dashboards
+3. Add alert acknowledgment SLA tracking
+4. Audit recent schema deployments for customer impact
 
-**Root cause hypothesis:**
-CUS-105's file format does not match expected schema across multiple validation layers. This suggests either:
+---
 
-* Schema version mismatch between customer and HealthCo
-* Review CUS-105’s file format for validation issues.
-* Check for recent changes on HealthCo side (schema version, API contract, or business rule validation).
-* Validate whether backward compatibility was impacted by recent deployments.
+## Methodology
 
-**Recommended action:**
+**Data sources:** ingestion_logs.csv (500 records), agent_call_outcomes.csv (2,000 records), api_health_metrics.csv (2,016 records), system_alerts.json (120 alerts)
 
-1. **IMMEDIATE (Next 2 hours):** Customer Success team to contact CUS-105
+**Analysis approach:**
+- Grouped data by customer and time to calculate failure rates
+- Filtered for circuit breaker events and compared error rates before/during
+- Correlated ingestion failures with agent call errors by customer
+- Identified unresolved/unacknowledged alerts by severity
 
-   * Provide: Validation error report showing exact failures (field names, expected vs actual)
-   * Request: Sample file from customer's current data source
-   * Ask: Has anything changed in their provider data export process?
-2. **SHORT-TERM (This week):**
-
-   * Run CUS-105's latest file through validation layer and generate detailed error report
-   * Provide customer with schema documentation and example valid file
-   * **Check recent deployments:** Did we change the schema version recently? If yes, that likely broke CUS-105's integration
-   * If schema changed: Either rollback the schema change OR give CUS-105 a migration timeline with support
-3. **LONG-TERM:**
-
-   * Implement customer-specific validation dashboards showing failure trends
-   * Build automated validation error reports emailed to customers daily
-   * Add schema version negotiation (support multiple versions, deprecate old ones gracefully)
-
-**Priority:** HIGH - Customer-specific but high volume impact
-
-\---
-
-### ISSUE 3: 10 Unresolved CRITICAL Alerts - Attention Required
-
-**What happened:**
-10 CRITICAL severity alerts remain unresolved across the 7-day period:
-
-* 3x CIRCUIT_BREAKER_OPEN (ALT-0026, ALT-0012, ALT-0035)
-* 6x SCHEDULING_FAILURE_CLUSTER (multiple customers)
-* 1x AI_BLOCKER_FINDING (CUS-103)
-
-**Breakdown:**
-
-|Alert ID|Timestamp|Type|Customer|Acknowledged|
-|-|-|-|-|-|
-|ALT-0026|Feb 9 09:19|CIRCUIT_BREAKER_OPEN|N/A|Yes|
-|ALT-0039|Feb 9 22:10|SCHEDULING_FAILURE_CLUSTER|CUS-102|Yes|
-|ALT-0055|Feb 10 00:45|AI_BLOCKER_FINDING|CUS-103|Yes|
-|ALT-0075|Feb 11 00:08|SCHEDULING_FAILURE_CLUSTER|CUS-104|NO|
-|ALT-0097|Feb 11 06:06|SCHEDULING_FAILURE_CLUSTER|N/A|NO|
-|ALT-0014|Feb 12 07:33|SCHEDULING_FAILURE_CLUSTER|CUS-103|Yes|
-|ALT-0060|Feb 12 10:10|SCHEDULING_FAILURE_CLUSTER|CUS-101|Yes|
-|ALT-0012|Feb 15 08:43|CIRCUIT_BREAKER_OPEN|CUS-102|Yes|
-|ALT-0035|Feb 15 17:58|CIRCUIT_BREAKER_OPEN|N/A|Yes|
-|ALT-0029|Feb 15 18:31|SCHEDULING_FAILURE_CLUSTER|CUS-102|Yes|
-
-**Concerns:**
-
-* **2 alerts NOT ACKNOWLEDGED** (ALT-0075, ALT-0097) - no one is actively working on these
-* **Multiple circuit breaker events** across different days - recurring problem
-* **CUS-102 has 3 CRITICAL alerts** - needs dedicated investigation
-
-**How I found it:**
-
-```python
-# Method: Alert filtering and grouping
-# 1. Filtered alerts where severity = "CRITICAL" AND resolved = False
-# 2. Found 10 unresolved critical alerts
-# 3. Checked acknowledged status - found 2 unacknowledged (ALT-0075, ALT-0097)
-# 4. Grouped alerts by customer_id - found CUS-102 appears in 3 critical alerts
-```
-
-**Recommended action:**
-
-1. **IMMEDIATE (Next 30 minutes):**
-
-   * Acknowledge ALT-0075 and ALT-0097 (currently unacknowledged)
-   * Assign owners for each of the 10 alerts
-   * Create incident tickets in Jira/ServiceNow for tracking
-2. **TODAY:**
-
-   * Investigate why circuit breaker opened 3 separate times (Feb 9, Feb 15 x2)
-   * Deep dive CUS-102 (3 CRITICAL alerts) - what's different about this customer?
-   * Resolve or escalate each of the 10 alerts with clear next steps
-3. **THIS WEEK:**
-
-   * Implement SLA for CRITICAL alert acknowledgment (target: <15 minutes)
-   * Add alert auto-escalation if unacknowledged after 30 minutes
-   * Build alert fatigue analysis - are we alerting on the right things?
-
-**Priority:** HIGH - Process issue indicating alerting/on-call gaps
-
-\---
-
-## Additional Observations
-
-### Cross-Customer Patterns
-
-* All 5 customers show some ingestion failures, but CUS-105 and CUS-103 are outliers
-* SCHEMA validation is the most common failure point (across all customers)
-* Feb 13 afternoon (circuit breaker period) shows elevated failures across all systems
-
-### Time-Based Patterns
-
-* Higher failure rates during circuit breaker window (Feb 13, 14:00-19:00)
-* Agent call error clusters align with API degradation periods
-* No significant day-of-week pattern (failures distributed across all 7 days)
-
-### System Health Baseline
-
-* Normal ingestion success rate: \~83% (when excluding CUS-105)
-* Normal agent call success rate: \~85%
-* API error rate typically <3% (except during circuit breaker periods)
-
-\---
-
-## Monday Morning Briefing Script
-
-*Here's how I'd present this to the engineering lead:*
-
-**"Good morning. I analyzed the past week's operational data and found three critical issues:**
-
-**First: Platform API had a 5-hour degradation window on Thursday afternoon that caused a 90% spike in agent call failures system-wide. The circuit breaker opened at 2 PM and stayed open until 7 PM. We need the Platform team to investigate what triggered this - my guess is database connection pool exhaustion or an external dependency timeout.**
-
-**Second: Customer CUS-105 has a 40% ingestion failure rate - more than double the average. They're failing across all validation layers, which suggests a file format issue on their end. Customer Success needs to contact them today with a detailed error report and schema guidance.**
-
-**Third: We have 10 unresolved CRITICAL alerts including 3 circuit breaker events and multiple scheduling failure clusters. Two of these aren't even acknowledged yet. We need to assign owners and clear these today.**
-
-**My recommendation: Tackle the API stability issue first since it affects all customers, then work with CUS-105 on their data format, and finally establish better alert triage processes so we don't let CRITICAL alerts sit unresolved.**
-
-**Questions?"**
-
-\---
-
-## How to Extend This Analysis
-
-**For production use, I would add:**
-
-1. **Real-time monitoring:** Convert this dashboard to refresh every 5 minutes with live data
-2. **Alerting logic:** Implement automated alerts when:
-
-   * Circuit breaker opens
-   * Customer failure rate >30%
-   * Agent call error rate >20%
-   * CRITICAL alert unacknowledged >30 minutes
-3. **Trend analysis:** Compare week-over-week metrics to detect degradation
-4. **Customer SLA tracking:** Track whether we're meeting customer SLAs for uptime/latency
-5. **Incident correlation:** Link alerts to incident tickets for full lifecycle tracking
-
-\---
-
-**Dashboard Code:** `ops_dashboard.py`  
-**Setup Instructions:** `README.md`  
-**Questions:** Contact Sahana Ballullaya
-
+**Tools:** Python, pandas, Streamlit, Plotly. Used Claude AI for code implementation as suggested by recruiter, allowing focus on operational analysis.
