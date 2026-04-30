@@ -40,7 +40,7 @@ Analysis of HealthCo's operational data over 7 days reveals three critical issue
 
 ```python
 # Method: Filter and compare error rates
-# 1. Filtered api\_health\_metrics for circuit\_breaker\_status = "OPEN"
+# 1. Filtered api_health_metrics for circuit_breaker_status = "OPEN"
 # 2. Found circuit breaker opened Feb 13 at 14:00, closed at 18:55
 # 3. Split agent calls into "before" and "during" circuit breaker period
 # 4. Calculated error rate for each period
@@ -81,9 +81,9 @@ Platform API reached error rate threshold (>5%) triggering circuit breaker prote
 **Failure breakdown by validation layer:**
 
 * SCHEMA validation: 7 failures (19%)
-* API\_CONTRACT: 6 failures (16%)
-* AI\_SEMANTIC: 6 failures (16%)
-* BUSINESS\_RULE: 5 failures (14%)
+* API_CONTRACT: 6 failures (16%)
+* AI_SEMANTIC: 6 failures (16%)
+* BUSINESS_RULE: 5 failures (14%)
 * Other layers: 13 failures (35%)
 
 **Downstream impact:**
@@ -98,8 +98,8 @@ CUS-105 also shows elevated agent call error rates, suggesting ingestion failure
 # 1. Grouped ingestion data by customer_id
 # 2. Calculated failure rate for each customer
 # 3. Identified CUS-105 with 39.8% failure rate vs 17.2% average
-# 4. Filtered CUS-105's failed ingestions to count by validation\_layer\_failed
-# 5. Found SCHEMA (7), API\_CONTRACT (6), AI\_SEMANTIC (6) as top failure layers
+# 4. Filtered CUS-105's failed ingestions to count by validation_layer_failed
+# 5. Found SCHEMA (7), API_CONTRACT (6), AI_SEMANTIC (6) as top failure layers
 ```
 
 **Root cause hypothesis:**
@@ -138,24 +138,24 @@ CUS-105's file format does not match expected schema across multiple validation 
 **What happened:**
 10 CRITICAL severity alerts remain unresolved across the 7-day period:
 
-* 3x CIRCUIT\_BREAKER\_OPEN (ALT-0026, ALT-0012, ALT-0035)
-* 6x SCHEDULING\_FAILURE\_CLUSTER (multiple customers)
-* 1x AI\_BLOCKER\_FINDING (CUS-103)
+* 3x CIRCUIT_BREAKER_OPEN (ALT-0026, ALT-0012, ALT-0035)
+* 6x SCHEDULING_FAILURE_CLUSTER (multiple customers)
+* 1x AI_BLOCKER_FINDING (CUS-103)
 
 **Breakdown:**
 
 |Alert ID|Timestamp|Type|Customer|Acknowledged|
 |-|-|-|-|-|
-|ALT-0026|Feb 9 09:19|CIRCUIT\_BREAKER\_OPEN|N/A|Yes|
-|ALT-0039|Feb 9 22:10|SCHEDULING\_FAILURE\_CLUSTER|CUS-102|Yes|
-|ALT-0055|Feb 10 00:45|AI\_BLOCKER\_FINDING|CUS-103|Yes|
-|ALT-0075|Feb 11 00:08|SCHEDULING\_FAILURE\_CLUSTER|CUS-104|NO|
-|ALT-0097|Feb 11 06:06|SCHEDULING\_FAILURE\_CLUSTER|N/A|NO|
-|ALT-0014|Feb 12 07:33|SCHEDULING\_FAILURE\_CLUSTER|CUS-103|Yes|
-|ALT-0060|Feb 12 10:10|SCHEDULING\_FAILURE\_CLUSTER|CUS-101|Yes|
-|ALT-0012|Feb 15 08:43|CIRCUIT\_BREAKER\_OPEN|CUS-102|Yes|
-|ALT-0035|Feb 15 17:58|CIRCUIT\_BREAKER\_OPEN|N/A|Yes|
-|ALT-0029|Feb 15 18:31|SCHEDULING\_FAILURE\_CLUSTER|CUS-102|Yes|
+|ALT-0026|Feb 9 09:19|CIRCUIT_BREAKER_OPEN|N/A|Yes|
+|ALT-0039|Feb 9 22:10|SCHEDULING_FAILURE_CLUSTER|CUS-102|Yes|
+|ALT-0055|Feb 10 00:45|AI_BLOCKER_FINDING|CUS-103|Yes|
+|ALT-0075|Feb 11 00:08|SCHEDULING_FAILURE_CLUSTER|CUS-104|NO|
+|ALT-0097|Feb 11 06:06|SCHEDULING_FAILURE_CLUSTER|N/A|NO|
+|ALT-0014|Feb 12 07:33|SCHEDULING_FAILURE_CLUSTER|CUS-103|Yes|
+|ALT-0060|Feb 12 10:10|SCHEDULING_FAILURE_CLUSTER|CUS-101|Yes|
+|ALT-0012|Feb 15 08:43|CIRCUIT_BREAKER_OPEN|CUS-102|Yes|
+|ALT-0035|Feb 15 17:58|CIRCUIT_BREAKER_OPEN|N/A|Yes|
+|ALT-0029|Feb 15 18:31|SCHEDULING_FAILURE_CLUSTER|CUS-102|Yes|
 
 **Concerns:**
 
@@ -170,7 +170,7 @@ CUS-105's file format does not match expected schema across multiple validation 
 # 1. Filtered alerts where severity = "CRITICAL" AND resolved = False
 # 2. Found 10 unresolved critical alerts
 # 3. Checked acknowledged status - found 2 unacknowledged (ALT-0075, ALT-0097)
-# 4. Grouped alerts by customer\_id - found CUS-102 appears in 3 critical alerts
+# 4. Grouped alerts by customer_id - found CUS-102 appears in 3 critical alerts
 ```
 
 **Recommended action:**
@@ -252,7 +252,7 @@ CUS-105's file format does not match expected schema across multiple validation 
 
 \---
 
-**Dashboard Code:** `ops\_dashboard.py`  
+**Dashboard Code:** `ops_dashboard.py`  
 **Setup Instructions:** `README.md`  
 **Questions:** Contact Sahana Ballullaya
 
